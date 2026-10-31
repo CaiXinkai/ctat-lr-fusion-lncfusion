@@ -1,0 +1,15 @@
+*.bam
+*.bai
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.fa
+*.fasta
+*.mm2
+CTAT_LR/
+results/
+logs/
+__pycache__/
+*.pyc
+
