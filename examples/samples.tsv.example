@@ -1,0 +1,6 @@
+sample_id	condition	fastq
+MCF7_control_rep1	control	/data/project/fastq/MCF7_control_rep1.fastq.gz
+MCF7_control_rep2	control	/data/project/fastq/MCF7_control_rep2.fastq.gz
+MCF7_treatment_rep1	treatment	/data/project/fastq/MCF7_treatment_rep1.fastq.gz
+MCF7_treatment_rep2	treatment	/data/project/fastq/MCF7_treatment_rep2.fastq.gz
+
