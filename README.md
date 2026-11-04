@@ -49,6 +49,27 @@ bash scripts/run_fastq_to_ctat_lncfusion_isoforms.sh \
 
 Platforms: `ont-cdna`, `ont-directrna`, or `pacbio-isoseq`.
 
+### Resume a post-result IGV failure
+
+CTAT-LR-Fusion writes its final prediction table before preparing the IGV
+bundle. If IGV preparation fails after the final table, resume without
+re-aligning the FASTQ or rerunning CTAT:
+
+```bash
+bash scripts/run_fastq_to_ctat_lncfusion_isoforms.sh \
+  --fastq /data/project/fastq/SAMPLE.fastq.gz \
+  --sample SAMPLE \
+  --outdir /data/project/ctat_lncfusion \
+  --lncfusion-lib /data3/LncFusion/Lib \
+  --platform ont-cdna \
+  --threads 32 \
+  --resume
+```
+
+Resume requires the final table, preliminary coordinate table, and fusion GFF3
+to be present and nonempty. The recovery decision is recorded in
+`SAMPLE.ctat_run_status.tsv`.
+
 For multiple samples, run the command once per FASTQ with a unique `--sample`.
 The sample directories are independent and suitable for job arrays.
 
@@ -76,7 +97,8 @@ OUTDIR/SAMPLE/
 │   ├── SAMPLE.fusion_isoforms.reference.fa.gz
 │   ├── SAMPLE.fusion_isoforms.entities.tsv
 │   ├── SAMPLE.fusion_isoforms.audit.tsv.gz
-│   └── SAMPLE.fusion_isoforms.summary.json
+│   ├── SAMPLE.fusion_isoforms.summary.json
+│   └── SAMPLE.ctat_run_status.tsv
 └── work/
     ├── SAMPLE.lncfusion_hg38.sorted.bam
     ├── SAMPLE.lncfusion_hg38.sorted.bam.bai
