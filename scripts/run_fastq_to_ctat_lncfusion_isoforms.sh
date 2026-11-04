@@ -9,10 +9,10 @@ Usage:
     --lncfusion-lib /data3/LncFusion/Lib --threads 32 \
     [--platform ont-cdna|ont-directrna|pacbio-isoseq] [--vis] [--resume]
 
-The final deliverables are CTAT's final fusion_predictions.tsv plus reference-
-reconstructed isoform sequences. No post-CTAT support, confidence, annotation,
-or event filter is applied. The CTAT preliminary table is coordinate evidence
-only and can never add a call absent from the final CTAT table.
+The final deliverables retain CTAT's final fusion_predictions.tsv, every exact
+block-chain entity, and every reconstructed sequence without filtering. A
+separate isoform_tiers directory reports pan-cancer-style clustering and
+progressively stricter comparison tiers; these never replace the raw files.
 
 --resume reuses a completed BAM and/or CTAT core outputs. It is intended for
 recovering runs that failed during CTAT's post-result IGV packaging stage.
@@ -147,6 +147,13 @@ else
         "$final/${sample}.fusion_isoforms.summary.json"
 fi
 cp -f "$entities" "$final/${sample}.fusion_isoforms.entities.tsv"
+tier_dir="$final/isoform_tiers"
+python3 "$script_dir/cluster_and_tier_isoforms.py" \
+    --entities "$final/${sample}.fusion_isoforms.entities.tsv" \
+    --sequences "$final/${sample}.fusion_isoforms.reference.fa.gz" \
+    --final-tsv "$final/${sample}.ctat-LR-fusion.fusion_predictions.tsv" \
+    --sample "$sample" --output-dir "$tier_dir" \
+    | tee "$work/isoform_tier_summary.json"
 {
     printf 'ctat_exit_status\t%s\n' "$ctat_exit"
     printf 'late_igv_failure_rescued\t%s\n' "$late_igv_failure_rescued"

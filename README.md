@@ -4,9 +4,10 @@ A single-entry workflow for long-read fusion RNA detection with
 [CTAT-LR-Fusion](https://github.com/TrinityCTAT/CTAT-LR-fusion) and the expanded
 LncFusion CTAT library (LncBook v2 + GENCODE v42, GRCh38/hg38).
 
-The workflow deliberately has no post-CTAT filtering: no minimum supporting-read
-threshold, no confidence tier, no overlapping-gene disambiguation, no NR
-clustering, and no pan-cancer integration.
+The workflow keeps a lossless unfiltered layer: no exact entity or reconstructed
+sequence is deleted. It also writes a separate `isoform_tiers/` comparison
+layer using the earlier pan-cancer clustering principles and progressively
+stricter support tiers. These derivative files never replace the raw layer.
 
 ## Result policy
 
@@ -82,10 +83,13 @@ The sample directories are independent and suitable for job arrays.
 4. Runs CTAT-LR-Fusion in BAM kickstart mode.
 5. Copies CTAT's official final table into `final/`.
 6. Constructs one entity for each distinct exact block chain supported by the
-   final CTAT calls. No fuzzy/tolerance-based NR clustering is performed.
+   final CTAT calls. This lossless table is never filtered or overwritten.
 7. Projects CTAT fusion-contig blocks back to hg38, extracts reference intervals
    in transcript order, and uses the matched LncFusion GTF only to complete
    compatible outer terminal-exon boundaries.
+8. Separately clusters entities with 5-bp breakpoint/junction tolerance,
+   terminal-subset collapsing, and alignment-strand-independent matching, then
+   writes progressively stricter comparison tiers.
 
 ## Outputs
 
@@ -98,6 +102,12 @@ OUTDIR/SAMPLE/
 │   ├── SAMPLE.fusion_isoforms.entities.tsv
 │   ├── SAMPLE.fusion_isoforms.audit.tsv.gz
 │   ├── SAMPLE.fusion_isoforms.summary.json
+│   ├── isoform_tiers/
+│   │   ├── SAMPLE.isoform_tier_summary.tsv
+│   │   ├── SAMPLE.isoform_tier_counts_by_fusion.tsv
+│   │   ├── SAMPLE.01_clustered_all.tsv
+│   │   ├── SAMPLE.04_pancancer_hc3.tsv
+│   │   └── ...matching representative FASTA files...
 │   └── SAMPLE.ctat_run_status.tsv
 └── work/
     ├── SAMPLE.lncfusion_hg38.sorted.bam
