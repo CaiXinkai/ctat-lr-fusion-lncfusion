@@ -120,6 +120,57 @@ The abridged table is copied only when CTAT creates it. The BAM and CTAT
 directory are reproducibility intermediates; the final CTAT table is the fusion
 detection result.
 
+## Post-detection condition integration
+
+`scripts/integrate_compare_fusion_isoforms.py` implements the CTL/E2 integration
+rule used in the accompanying MCF7 analysis. It is deliberately separate from
+fusion detection and does not alter any CTAT result.
+
+Prepare one TSV by concatenating the per-sample `01_clustered_all.tsv` files and
+add a `group` column (for example `CTL` or `E2`). Then run:
+
+```bash
+python scripts/integrate_compare_fusion_isoforms.py \
+  --input all_samples.clustered.tsv \
+  --group-a CTL \
+  --group-b E2 \
+  --mapped-reads-a 7936508 \
+  --mapped-reads-b 9345794 \
+  --output-prefix results/MCF7_CTL_vs_E2
+```
+
+The integration rule:
+
+1. removes non-monotonic/overlapping junction chains;
+2. matches only the same directed fusion and splice type;
+3. trims the first and last junction only for core matching when a chain has
+   more than two junctions;
+4. applies 5-bp breakpoint and junction tolerance;
+5. permits a contiguous terminal subset during core matching;
+6. retains the representative full chain and all source cluster support;
+7. verifies support-read conservation after integration.
+
+Exploratory expression candidates require total isoform reads >=5 and
+absolute library-depth-normalized log2 fold change >=1. Within-fusion usage
+candidates require at least 10 fusion reads in each group, at least 3 reads for
+the isoform, and an absolute usage change >=20 percentage points. A 0.5-read
+pseudocount is used only for the log2 fold change.
+
+The outputs are:
+
+```text
+PREFIX.core_isoforms.tsv
+PREFIX.expression_candidates.tsv
+PREFIX.isoform_usage_changes.tsv
+PREFIX.dominant_switches.tsv
+PREFIX.summary.json
+```
+
+These are effect-size and prioritization tables. With one library per condition
+they are not statistical differential-expression results: no valid p-value or
+FDR can be estimated. Biological replicates must be kept separate for a formal
+count model.
+
 ## Isoform sequence meaning
 
 The FASTA is reference-guided and exon-chain-defined. Each sequence is rebuilt
