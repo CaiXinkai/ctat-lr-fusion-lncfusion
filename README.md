@@ -1,41 +1,39 @@
-# FASTQ → BAM → CTAT-LR-Fusion (LncFusion) → isoform sequences
+# FASTQ → BAM → CTAT-LR-Fusion（LncFusion 库）→ fusion isoform 序列
 
-A single-entry workflow for long-read fusion RNA detection with
-[CTAT-LR-Fusion](https://github.com/TrinityCTAT/CTAT-LR-fusion) and the expanded
-LncFusion CTAT library (LncBook v2 + GENCODE v42, GRCh38/hg38).
+本项目是一个用于长读长 fusion RNA 检测的单入口流程，使用
+[CTAT-LR-Fusion](https://github.com/TrinityCTAT/CTAT-LR-fusion) 和扩展后的
+LncFusion CTAT 参考库（LncBook v2 + GENCODE v42，GRCh38/hg38）。
 
-The workflow keeps a lossless unfiltered layer: no exact entity or reconstructed
-sequence is deleted. It also writes a separate `isoform_tiers/` comparison
-layer using the earlier pan-cancer clustering principles and progressively
-stricter support tiers. These derivative files never replace the raw layer.
+流程保留无损的未过滤层：不删除任何精确 isoform entity 或重建序列。
+同时在独立的 `isoform_tiers/` 目录中，按先前的泛癌聚类原则生成不同支持
+强度的比较层。这些衍生结果不会覆盖原始无损层。
 
-## Result policy
+## 结果定义
 
-The fusion-call deliverable is exclusively:
+fusion 检测的最终结果唯一指向：
 
 ```text
 SAMPLE.ctat-LR-fusion.fusion_predictions.tsv
 ```
 
-This is CTAT-LR-Fusion's official final table. The preliminary table and fusion
-GFF3 remain under `work/` and are used only as coordinate evidence for sequence
-reconstruction. They never add an event absent from the final table.
+该文件是 CTAT-LR-Fusion 的官方最终表。preliminary 表和 fusion GFF3 保留在
+`work/` 中，只用于提供序列重建所需的坐标证据，不会添加任何未出现在
+最终表中的 fusion 事件。
 
-CTAT itself applies its official internal logic when creating the final table.
-Removing that logic would require using the preliminary table, which is not a
-final CTAT result.
+CTAT 在生成最终表时会应用自身的官方内部逻辑。如果绕过这些逻辑，就必须使用
+preliminary 表，而它不是 CTAT 的最终结果。
 
-## Requirements
+## 运行要求
 
 - Linux
 - Python 3.8+
-- CTAT-LR-Fusion in `PATH`
+- `PATH` 中可调用 CTAT-LR-Fusion
 - minimap2
 - samtools
 - gzip
-- LncFusion `Lib` directory
+- LncFusion `Lib` 目录
 
-## One-command run
+## 单命令运行
 
 ```bash
 bash scripts/run_fastq_to_ctat_lncfusion_isoforms.sh \
@@ -48,13 +46,12 @@ bash scripts/run_fastq_to_ctat_lncfusion_isoforms.sh \
   --vis
 ```
 
-Platforms: `ont-cdna`, `ont-directrna`, or `pacbio-isoseq`.
+`--platform` 可选：`ont-cdna`、`ont-directrna` 或 `pacbio-isoseq`。
 
-### Resume a post-result IGV failure
+### CTAT 已产生结果但 IGV 打包失败时续跑
 
-CTAT-LR-Fusion writes its final prediction table before preparing the IGV
-bundle. If IGV preparation fails after the final table, resume without
-re-aligning the FASTQ or rerunning CTAT:
+CTAT-LR-Fusion 会在准备 IGV 数据包之前写出最终预测表。如果最终表已生成，
+但后续 IGV 准备失败，可以在不重做 FASTQ 比对和 CTAT 检测的情况下续跑：
 
 ```bash
 bash scripts/run_fastq_to_ctat_lncfusion_isoforms.sh \
@@ -67,31 +64,24 @@ bash scripts/run_fastq_to_ctat_lncfusion_isoforms.sh \
   --resume
 ```
 
-Resume requires the final table, preliminary coordinate table, and fusion GFF3
-to be present and nonempty. The recovery decision is recorded in
-`SAMPLE.ctat_run_status.tsv`.
+`--resume` 要求最终表、preliminary 坐标表和 fusion GFF3 均存在且非空。恢复决策会记录在
+`SAMPLE.ctat_run_status.tsv` 中。
 
-For multiple samples, run the command once per FASTQ with a unique `--sample`.
-The sample directories are independent and suitable for job arrays.
+多样本时，对每个 FASTQ 分别运行一次，并使用唯一的 `--sample`。各样本目录相互独立，
+可直接用于作业数组。
 
-## What the command does
+## 单命令流程的处理内容
 
-1. Resolves `LncFusion_v1_CTAT/ctat_genome_lib_build_dir`.
-2. Aligns FASTQ to that library's exact `ref_genome.fa` with a
-   platform-appropriate splice-aware minimap2 preset.
-3. Sorts and indexes the BAM.
-4. Runs CTAT-LR-Fusion in BAM kickstart mode.
-5. Copies CTAT's official final table into `final/`.
-6. Constructs one entity for each distinct exact block chain supported by the
-   final CTAT calls. This lossless table is never filtered or overwritten.
-7. Projects CTAT fusion-contig blocks back to hg38, extracts reference intervals
-   in transcript order, and uses the matched LncFusion GTF only to complete
-   compatible outer terminal-exon boundaries.
-8. Separately clusters entities with 5-bp breakpoint/junction tolerance,
-   terminal-subset collapsing, and alignment-strand-independent matching, then
-   writes progressively stricter comparison tiers.
+1. 自动解析 `LncFusion_v1_CTAT/ctat_genome_lib_build_dir`。
+2. 使用与平台相匹配的 minimap2 splice-aware 参数，将 FASTQ 比对到该库的 `ref_genome.fa`。
+3. 对 BAM 排序并建立索引。
+4. 使用 BAM kickstart 模式运行 CTAT-LR-Fusion。
+5. 将 CTAT 官方最终表复制到 `final/`。
+6. 为最终 CTAT 结果支持的每一种精确 block chain 建立一个 entity。该无损表不会被过滤或覆盖。
+7. 将 CTAT fusion-contig block 投影回 hg38，按转录顺序提取参考区间，并仅使用匹配的 LncFusion GTF 补全兼容的外侧末端 exon 边界。
+8. 在独立的衍生层中，以 5 bp 断点/junction 容差、terminal-subset 折叠和忽略比对方向的规则聚类 entity，再输出逐步严格的比较层。
 
-## Outputs
+## 输出结构
 
 ```text
 OUTDIR/SAMPLE/
@@ -107,7 +97,7 @@ OUTDIR/SAMPLE/
 │   │   ├── SAMPLE.isoform_tier_counts_by_fusion.tsv
 │   │   ├── SAMPLE.01_clustered_all.tsv
 │   │   ├── SAMPLE.04_pancancer_hc3.tsv
-│   │   └── ...matching representative FASTA files...
+│   │   └── ...与各层匹配的代表 FASTA...
 │   └── SAMPLE.ctat_run_status.tsv
 └── work/
     ├── SAMPLE.lncfusion_hg38.sorted.bam
@@ -116,18 +106,15 @@ OUTDIR/SAMPLE/
     └── sequence_reconstruction/
 ```
 
-The abridged table is copied only when CTAT creates it. The BAM and CTAT
-directory are reproducibility intermediates; the final CTAT table is the fusion
-detection result.
+只有当 CTAT 生成 abridged 表时，流程才会复制该文件。BAM 和 CTAT 目录属于可重复性中间文件；
+CTAT 最终表才是 fusion 检测结果。
 
-## Post-detection condition integration
+## 检测后的条件间整合
 
-`scripts/integrate_compare_fusion_isoforms.py` implements the CTL/E2 integration
-rule used in the accompanying MCF7 analysis. It is deliberately separate from
-fusion detection and does not alter any CTAT result.
+`scripts/integrate_compare_fusion_isoforms.py` 实现了 MCF7 CTL/E2 分析中使用的整合规则。
+该步骤与 fusion 检测分离，不会修改任何 CTAT 原始结果。
 
-Prepare one TSV by concatenating the per-sample `01_clustered_all.tsv` files and
-add a `group` column (for example `CTL` or `E2`). Then run:
+先合并各样本的 `01_clustered_all.tsv`，并添加 `group` 列（例如 `CTL` 或 `E2`），再运行：
 
 ```bash
 python scripts/integrate_compare_fusion_isoforms.py \
@@ -139,24 +126,21 @@ python scripts/integrate_compare_fusion_isoforms.py \
   --output-prefix results/MCF7_CTL_vs_E2
 ```
 
-The integration rule:
+整合规则：
 
-1. removes non-monotonic/overlapping junction chains;
-2. matches only the same directed fusion and splice type;
-3. trims the first and last junction only for core matching when a chain has
-   more than two junctions;
-4. applies 5-bp breakpoint and junction tolerance;
-5. permits a contiguous terminal subset during core matching;
-6. retains the representative full chain and all source cluster support;
-7. verifies support-read conservation after integration.
+1. 排除非单调或内部重叠的 junction chain。
+2. 只匹配相同的有方向 fusion 和 splice type。
+3. 当 chain 含有超过 2 个 junction 时，仅在 core 匹配阶段去除首尾 junction。
+4. 断点和 junction 均使用 5 bp 容差。
+5. core 匹配允许连续的 terminal subset。
+6. 保留完整代表 chain 和所有来源 cluster 的支持数。
+7. 整合后检查支持读段数是否守恒。
 
-Exploratory expression candidates require total isoform reads >=5 and
-absolute library-depth-normalized log2 fold change >=1. Within-fusion usage
-candidates require at least 10 fusion reads in each group, at least 3 reads for
-the isoform, and an absolute usage change >=20 percentage points. A 0.5-read
-pseudocount is used only for the log2 fold change.
+探索性表达变化候选要求 isoform 总支持读段数 >=5，且经文库深度标准化的
+`|log2FC| >= 1`。fusion 内 isoform usage 候选要求两组中的 fusion 总支持数均 >=10，
+目标 isoform 总支持数 >=3，且使用比例的绝对变化 >=20 个百分点。0.5 read 伪计数只用于 log2FC 计算。
 
-The outputs are:
+输出：
 
 ```text
 PREFIX.core_isoforms.tsv
@@ -166,23 +150,18 @@ PREFIX.dominant_switches.tsv
 PREFIX.summary.json
 ```
 
-These are effect-size and prioritization tables. With one library per condition
-they are not statistical differential-expression results: no valid p-value or
-FDR can be estimated. Biological replicates must be kept separate for a formal
-count model.
+这些是效应量和候选优先级结果。如果每个条件只有一个文库，就不能将其解释为统计学差异表达，
+也无法估计可靠的 P 值或 FDR。正式计数模型必须保留独立的生物学重复。
 
-## Isoform sequence meaning
+## Isoform 序列的含义
 
-The FASTA is reference-guided and exon-chain-defined. Each sequence is rebuilt
-from hg38 using the CTAT-observed block chain and normalized to the CTAT
-left-gene → right-gene orientation. It is not the longest NR read.
+FASTA 是参考引导、由 exon chain 定义的序列。每条序列根据 CTAT 观察到的 block chain
+从 hg38 重建，并归一到 CTAT 的左基因 → 右基因方向。它不是最长 NR read。
 
-The method preserves the observed internal splice structure and fusion junction
-but does not invent unobserved transcript ends. These are therefore
-**reference-corrected fusion isoform core sequences**, not automatically
-experimentally proven complete 5′–3′ transcripts.
+该方法保留观察到的内部剪接结构和 fusion junction，但不会虚构未观察到的转录本末端。
+因此，这些序列是**参考校正的 fusion isoform 核心序列**，不等同于已被实验证明的完整 5′–3′ 全长转录本。
 
-## Reproducibility
+## 可重复性记录
 
 ```bash
 ctat-LR-fusion --version 2>&1 | head
@@ -193,9 +172,8 @@ sha256sum \
   /data3/LncFusion/Lib/LncFusion_v1_CTAT/ctat_genome_lib_build_dir/ref_annot.gtf
 ```
 
-## Sources
+## 参考项目
 
 - [LncFusion](https://github.com/CZhouLab/LncFusion)
 - [CTAT-LR-Fusion](https://github.com/TrinityCTAT/CTAT-LR-fusion)
 - [minimap2](https://github.com/lh3/minimap2)
-
