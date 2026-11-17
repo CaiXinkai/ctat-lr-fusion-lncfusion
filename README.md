@@ -153,6 +153,51 @@ PREFIX.summary.json
 这些是效应量和候选优先级结果。如果每个条件只有一个文库，就不能将其解释为统计学差异表达，
 也无法估计可靠的 P 值或 FDR。正式计数模型必须保留独立的生物学重复。
 
+## 聚类代表序列的选择原则
+
+“代表序列”是每个 isoform cluster 的确定性代表，不等同于生物学意义上的最佳序列、最长原始 read
+或 cluster 内 reads 的 consensus。程序先在相同有方向 fusion 和 splice type 内进行聚类，再按以下顺序
+选择 cluster seed 及其代表序列：
+
+1. 优先选择内部 junction 数量最多的 entity；
+2. junction 数量相同时，优先选择参考基因组重建序列更长的 entity；
+3. 重建序列长度仍相同时，优先选择支持 reads 更多的 entity；
+4. 以上均相同时，按 `feature_id` 字典序选择，以保证重复运行结果稳定。
+
+对应排序逻辑为：
+
+```python
+ordered = sorted(
+    range(len(group)),
+    key=lambda i: (
+        -len(group[i]["internal_chain"]),
+        -group[i]["sequence_length"],
+        -group[i]["support"],
+        group[i]["feature_id"],
+    ),
+)
+```
+
+最终写入 TSV 的是 seed 的 `representative_feature_id` 和
+`representative_block_chain`；匹配的 FASTA 序列来自该
+`representative_feature_id` 的参考重建序列。
+
+各输出层对代表序列的处理如下：
+
+| 输出层 | 代表序列规则 |
+|---|---|
+| `00_raw_exact_entities` | 未聚类；每种精确 block chain 保留自己的参考重建序列。 |
+| `01_clustered_all` | 每个 cluster 按上述四级优先顺序选择一次代表序列。 |
+| `02_clustered_ctat_event_pass` | 从 01 中筛选通过 CTAT event 条件的 cluster，不重新选择序列。 |
+| `03_clustered_support_ge2` | 从 02 中保留支持 reads >=2 的 cluster，代表序列不变。 |
+| `04_pancancer_hc3` | 从 02 中保留满足配置的泛癌规则且支持 reads >=3 的 cluster，代表序列不变。 |
+| `05_conservative_ge5` | 从 02 中保留支持 reads >=5 的 cluster，代表序列不变。 |
+| `06_conservative_ref_ge5` | 从 05 中进一步保留 `ONLY_REF_SPLICE` cluster，代表序列不变。 |
+
+因此，同一个 `cluster_id` 如果出现在多个过滤层，其
+`representative_feature_id`、`representative_block_chain` 和 FASTA 序列完全相同；后续过滤层只决定
+cluster 是否保留，不会再次选择所谓的“最佳序列”。
+
 ## Isoform 序列的含义
 
 FASTA 是参考引导、由 exon chain 定义的序列。每条序列根据 CTAT 观察到的 block chain
